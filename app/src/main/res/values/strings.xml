@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Calculator Vault</string>
+    <string name="notification_listener_label">Calculator Vault Notification Access</string>
+    <style name="Theme.PrivacySpace" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
