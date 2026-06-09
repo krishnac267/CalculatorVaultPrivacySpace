@@ -2,5 +2,12 @@
 <resources>
     <string name="app_name">Calculator Vault</string>
     <string name="notification_listener_label">Calculator Vault Notification Access</string>
+    <string name="clone_space_ready">Clone Space is ready</string>
+    <string name="clone_space_title">Clone Space</string>
+    <string name="clone_space_enable">Enable Clone Space</string>
+    <string name="clone_app">Clone</string>
+    <string name="shortcut_app">Shortcut</string>
+    <string name="clone_badge">Clone</string>
+    <string name="picker_search_apps">Search installed apps</string>
     <style name="Theme.PrivacySpace" parent="android:Theme.Material.Light.NoActionBar" />
 </resources>

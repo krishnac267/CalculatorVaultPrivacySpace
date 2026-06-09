@@ -17,10 +17,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -48,6 +48,7 @@ import com.calculator.vault.privacy.presentation.screens.SecurityCenterScreen
 import com.calculator.vault.privacy.presentation.screens.SettingsScreen
 import com.calculator.vault.privacy.presentation.screens.SetupScreen
 import com.calculator.vault.privacy.presentation.testing.TestTags
+import com.calculator.vault.privacy.presentation.viewmodels.AppsEvent
 import com.calculator.vault.privacy.presentation.viewmodels.AppsViewModel
 import com.calculator.vault.privacy.presentation.viewmodels.CalculatorEvent
 import com.calculator.vault.privacy.presentation.viewmodels.CalculatorViewModel
@@ -248,6 +249,25 @@ private fun VaultShell(
             composable(Routes.APPS) {
                 val viewModel: AppsViewModel = hiltViewModel()
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val activity = LocalContext.current as FragmentActivity
+                val lifecycleOwner = LocalLifecycleOwner.current
+                LaunchedEffect(viewModel) {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            is AppsEvent.StartCloneSpaceSetup -> activity.startActivity(event.intent)
+                        }
+                    }
+                }
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            viewModel.checkPendingCloneInstall()
+                            viewModel.refresh()
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
                 AppsScreen(
                     uiState = uiState,
                     onQueryChange = viewModel::updateQuery,
@@ -255,6 +275,10 @@ private fun VaultShell(
                     onToggleFavorite = viewModel::toggleFavorite,
                     onShowPicker = viewModel::showPicker,
                     onLaunchInstalled = viewModel::launchInstalledApp,
+                    onCloneInstalled = { app -> viewModel.cloneInstalledApp(activity, app) },
+                    onEnableCloneSpace = viewModel::enableCloneSpace,
+                    onDismissMessage = viewModel::clearUserMessage,
+                    onPickerQueryChange = viewModel::updatePickerQuery,
                 )
             }
             composable(Routes.NOTES) {

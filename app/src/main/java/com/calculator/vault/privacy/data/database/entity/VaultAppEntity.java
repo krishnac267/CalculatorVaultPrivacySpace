@@ -15,4 +15,5 @@ public class VaultAppEntity {
     public long lastLaunchedAt;
     public int launchCount;
     public int vaultScope;
+    public boolean isClone;
 }

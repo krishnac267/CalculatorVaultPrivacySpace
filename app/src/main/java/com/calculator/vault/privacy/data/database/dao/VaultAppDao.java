@@ -24,8 +24,8 @@ public interface VaultAppDao {
     @Query("SELECT * FROM vault_apps WHERE vaultScope = :vaultScope AND (label LIKE '%' || :query || '%' OR packageName LIKE '%' || :query || '%')")
     List<VaultAppEntity> search(int vaultScope, String query);
 
-    @Query("SELECT * FROM vault_apps WHERE packageName = :packageName AND vaultScope = :vaultScope LIMIT 1")
-    VaultAppEntity findByPackage(String packageName, int vaultScope);
+    @Query("SELECT * FROM vault_apps WHERE packageName = :packageName AND vaultScope = :vaultScope AND isClone = :isClone LIMIT 1")
+    VaultAppEntity findByPackage(String packageName, int vaultScope, boolean isClone);
 
     @Query("SELECT COUNT(*) FROM vault_apps WHERE vaultScope = :vaultScope")
     int count(int vaultScope);

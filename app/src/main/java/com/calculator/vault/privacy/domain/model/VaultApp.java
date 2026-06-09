@@ -8,6 +8,7 @@ public final class VaultApp {
     private final boolean favorite;
     private final long lastLaunchedAt;
     private final int launchCount;
+    private final boolean clone;
 
     public VaultApp(
             long id,
@@ -16,7 +17,8 @@ public final class VaultApp {
             String category,
             boolean favorite,
             long lastLaunchedAt,
-            int launchCount
+            int launchCount,
+            boolean clone
     ) {
         this.id = id;
         this.packageName = packageName;
@@ -25,6 +27,7 @@ public final class VaultApp {
         this.favorite = favorite;
         this.lastLaunchedAt = lastLaunchedAt;
         this.launchCount = launchCount;
+        this.clone = clone;
     }
 
     public long getId() { return id; }
@@ -34,4 +37,5 @@ public final class VaultApp {
     public boolean isFavorite() { return favorite; }
     public long getLastLaunchedAt() { return lastLaunchedAt; }
     public int getLaunchCount() { return launchCount; }
+    public boolean isClone() { return clone; }
 }

@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.os.Build;
 
 import com.calculator.vault.privacy.domain.interfaces.InstalledAppsRepository;
 import com.calculator.vault.privacy.domain.model.InstalledApp;
@@ -32,9 +33,7 @@ public final class InstalledAppsRepositoryImpl implements InstalledAppsRepositor
 
     @Override
     public List<InstalledApp> getLaunchableApps() {
-        if (cachedApps == null) {
-            cachedApps = loadApps();
-        }
+        cachedApps = loadApps();
         return cachedApps;
     }
 
@@ -55,7 +54,15 @@ public final class InstalledAppsRepositoryImpl implements InstalledAppsRepositor
     private List<InstalledApp> loadApps() {
         PackageManager pm = context.getPackageManager();
         Intent launcherIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-        List<ResolveInfo> activities = pm.queryIntentActivities(launcherIntent, PackageManager.MATCH_DEFAULT_ONLY);
+        List<ResolveInfo> activities;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            activities = pm.queryIntentActivities(
+                    launcherIntent,
+                    PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_ALL)
+            );
+        } else {
+            activities = pm.queryIntentActivities(launcherIntent, PackageManager.MATCH_ALL);
+        }
         List<InstalledApp> apps = new ArrayList<>();
         String selfPackage = context.getPackageName();
         for (ResolveInfo info : activities) {

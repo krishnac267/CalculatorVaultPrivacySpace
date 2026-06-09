@@ -10,6 +10,7 @@ public interface AppRepository {
     List<VaultApp> getFavoriteApps();
     List<VaultApp> searchApps(String query);
     void recordLaunch(String packageName, String label, String category);
+    void recordLaunch(String packageName, String label, String category, boolean clone);
     void toggleFavorite(long id);
     int getAppCount();
 }

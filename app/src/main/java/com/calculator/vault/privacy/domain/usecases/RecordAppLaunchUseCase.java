@@ -13,6 +13,10 @@ public final class RecordAppLaunchUseCase {
     }
 
     public void execute(String packageName, String label, String category) {
-        appRepository.recordLaunch(packageName, label, category);
+        execute(packageName, label, category, false);
+    }
+
+    public void execute(String packageName, String label, String category, boolean clone) {
+        appRepository.recordLaunch(packageName, label, category, clone);
     }
 }

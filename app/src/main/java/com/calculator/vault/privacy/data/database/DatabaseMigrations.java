@@ -41,4 +41,11 @@ public final class DatabaseMigrations {
             db.execSQL("ALTER TABLE vault_files ADD COLUMN internalFileName TEXT NOT NULL DEFAULT ''");
         }
     };
+
+    public static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE vault_apps ADD COLUMN isClone INTEGER NOT NULL DEFAULT 0");
+        }
+    };
 }

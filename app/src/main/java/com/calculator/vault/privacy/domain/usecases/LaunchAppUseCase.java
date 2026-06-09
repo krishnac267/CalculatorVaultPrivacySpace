@@ -17,12 +17,21 @@ public final class LaunchAppUseCase {
     }
 
     public void execute(InstalledApp app) {
-        recordAppLaunchUseCase.execute(app.getPackageName(), app.getLabel(), app.getCategory());
+        recordAppLaunchUseCase.execute(app.getPackageName(), app.getLabel(), app.getCategory(), false);
         appLaunchGateway.launch(app.getPackageName());
     }
 
     public void executeVaultApp(VaultApp app) {
-        recordAppLaunchUseCase.execute(app.getPackageName(), app.getLabel(), app.getCategory());
-        appLaunchGateway.launch(app.getPackageName());
+        recordAppLaunchUseCase.execute(
+                app.getPackageName(),
+                app.getLabel(),
+                app.getCategory(),
+                app.isClone()
+        );
+        if (app.isClone()) {
+            appLaunchGateway.launchClone(app.getPackageName());
+        } else {
+            appLaunchGateway.launch(app.getPackageName());
+        }
     }
 }

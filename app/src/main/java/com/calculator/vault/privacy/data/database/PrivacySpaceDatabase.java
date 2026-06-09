@@ -22,7 +22,7 @@ import com.calculator.vault.privacy.data.database.entity.VaultNotificationEntity
                 VaultFileEntity.class,
                 IntruderLogEntity.class
         },
-        version = 4,
+        version = 5,
         exportSchema = false
 )
 public abstract class PrivacySpaceDatabase extends RoomDatabase {

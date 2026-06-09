@@ -1,15 +1,23 @@
 package com.calculator.vault.privacy.presentation.viewmodels
 
+import android.app.Activity
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.calculator.vault.privacy.core.clone.WorkProfileCloneManager
 import com.calculator.vault.privacy.domain.model.InstalledApp
 import com.calculator.vault.privacy.domain.model.VaultApp
+import com.calculator.vault.privacy.domain.usecases.BuildCloneSpaceSetupIntentUseCase
+import com.calculator.vault.privacy.domain.usecases.CloneInstalledAppUseCase
+import com.calculator.vault.privacy.domain.usecases.GetCloneSpaceStatusUseCase
 import com.calculator.vault.privacy.domain.usecases.GetInstalledAppsUseCase
 import com.calculator.vault.privacy.domain.usecases.GetVaultAppsUseCase
 import com.calculator.vault.privacy.domain.usecases.LaunchAppUseCase
 import com.calculator.vault.privacy.domain.usecases.ToggleAppFavoriteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -18,10 +26,18 @@ import javax.inject.Inject
 data class AppsUiState(
     val loading: Boolean = true,
     val query: String = "",
+    val pickerQuery: String = "",
     val vaultApps: List<VaultApp> = emptyList(),
     val installedApps: List<InstalledApp> = emptyList(),
     val showPicker: Boolean = false,
+    val cloneSpaceReady: Boolean = false,
+    val cloneSpaceMessage: String = "",
+    val userMessage: String? = null,
 )
+
+sealed interface AppsEvent {
+    data class StartCloneSpaceSetup(val intent: Intent) : AppsEvent
+}
 
 @HiltViewModel
 class AppsViewModel @Inject constructor(
@@ -29,10 +45,19 @@ class AppsViewModel @Inject constructor(
     private val getInstalledAppsUseCase: GetInstalledAppsUseCase,
     private val launchAppUseCase: LaunchAppUseCase,
     private val toggleAppFavoriteUseCase: ToggleAppFavoriteUseCase,
+    private val getCloneSpaceStatusUseCase: GetCloneSpaceStatusUseCase,
+    private val buildCloneSpaceSetupIntentUseCase: BuildCloneSpaceSetupIntentUseCase,
+    private val cloneInstalledAppUseCase: CloneInstalledAppUseCase,
+    private val workProfileCloneManager: WorkProfileCloneManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppsUiState())
     val uiState = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<AppsEvent>()
+    val events = _events.asSharedFlow()
+
+    private var pendingCloneApp: InstalledApp? = null
 
     init {
         refresh()
@@ -43,28 +68,64 @@ class AppsViewModel @Inject constructor(
         refresh()
     }
 
+    fun updatePickerQuery(query: String) {
+        _uiState.update { it.copy(pickerQuery = query) }
+        viewModelScope.launch {
+            val installed = getInstalledAppsUseCase.execute(query)
+            _uiState.update { it.copy(installedApps = installed) }
+        }
+    }
+
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(loading = true) }
             val query = _uiState.value.query
+            val pickerQuery = _uiState.value.pickerQuery
+            val cloneStatus = getCloneSpaceStatusUseCase.execute()
             _uiState.update {
                 it.copy(
                     loading = false,
                     vaultApps = getVaultAppsUseCase.execute(query),
-                    installedApps = getInstalledAppsUseCase.execute(query),
+                    installedApps = getInstalledAppsUseCase.execute(pickerQuery),
+                    cloneSpaceReady = cloneStatus.isReady,
+                    cloneSpaceMessage = cloneStatus.message,
                 )
             }
         }
     }
 
     fun showPicker(show: Boolean) {
-        _uiState.update { it.copy(showPicker = show) }
+        if (show) {
+            _uiState.update { it.copy(showPicker = true, pickerQuery = "", userMessage = null) }
+            updatePickerQuery("")
+        } else {
+            _uiState.update { it.copy(showPicker = false) }
+        }
+    }
+
+    fun clearUserMessage() {
+        _uiState.update { it.copy(userMessage = null) }
+    }
+
+    fun enableCloneSpace() {
+        viewModelScope.launch {
+            try {
+                val intent = buildCloneSpaceSetupIntentUseCase.execute()
+                _events.emit(AppsEvent.StartCloneSpaceSetup(intent))
+            } catch (e: IllegalStateException) {
+                _uiState.update { it.copy(userMessage = e.message ?: "Clone Space is not supported on this device") }
+            }
+        }
     }
 
     fun launchVaultApp(app: VaultApp) {
         viewModelScope.launch {
-            launchAppUseCase.executeVaultApp(app)
-            refresh()
+            try {
+                launchAppUseCase.executeVaultApp(app)
+                refresh()
+            } catch (e: IllegalStateException) {
+                _uiState.update { it.copy(userMessage = e.message) }
+            }
         }
     }
 
@@ -72,6 +133,55 @@ class AppsViewModel @Inject constructor(
         viewModelScope.launch {
             launchAppUseCase.execute(app)
             _uiState.update { it.copy(showPicker = false) }
+            refresh()
+        }
+    }
+
+    fun cloneInstalledApp(activity: Activity, app: InstalledApp) {
+        viewModelScope.launch {
+            val status = getCloneSpaceStatusUseCase.execute()
+            if (!status.isReady) {
+                _uiState.update {
+                    it.copy(userMessage = "${status.message} Tap Enable Clone Space first.")
+                }
+                return@launch
+            }
+            if (cloneInstalledAppUseCase.isAlreadyCloned(app.packageName)) {
+                cloneInstalledAppUseCase.onInstallSucceeded(app)
+                _uiState.update {
+                    it.copy(
+                        showPicker = false,
+                        userMessage = "${app.label} is already cloned and added to your vault.",
+                    )
+                }
+                refresh()
+                return@launch
+            }
+            try {
+                pendingCloneApp = app
+                workProfileCloneManager.startCloneInstall(activity, app.packageName)
+                _uiState.update {
+                    it.copy(
+                        showPicker = false,
+                        userMessage = "Installing ${app.label} clone… Return here when Android finishes.",
+                    )
+                }
+            } catch (e: IllegalStateException) {
+                pendingCloneApp = null
+                _uiState.update { it.copy(userMessage = e.message) }
+            }
+        }
+    }
+
+    fun checkPendingCloneInstall() {
+        val app = pendingCloneApp ?: return
+        viewModelScope.launch {
+            if (!cloneInstalledAppUseCase.isAlreadyCloned(app.packageName)) {
+                return@launch
+            }
+            cloneInstalledAppUseCase.onInstallSucceeded(app)
+            pendingCloneApp = null
+            _uiState.update { it.copy(userMessage = "${app.label} cloned successfully.") }
             refresh()
         }
     }

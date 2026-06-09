@@ -50,7 +50,12 @@ public final class AppRepositoryImpl implements AppRepository {
 
     @Override
     public void recordLaunch(String packageName, String label, String category) {
-        VaultAppEntity existing = vaultAppDao.findByPackage(packageName, scope());
+        recordLaunch(packageName, label, category, false);
+    }
+
+    @Override
+    public void recordLaunch(String packageName, String label, String category, boolean clone) {
+        VaultAppEntity existing = vaultAppDao.findByPackage(packageName, scope(), clone);
         long now = System.currentTimeMillis();
         if (existing == null) {
             VaultAppEntity entity = new VaultAppEntity();
@@ -61,6 +66,7 @@ public final class AppRepositoryImpl implements AppRepository {
             entity.lastLaunchedAt = now;
             entity.launchCount = 1;
             entity.vaultScope = scope();
+            entity.isClone = clone;
             vaultAppDao.insert(entity);
         } else {
             existing.label = label;

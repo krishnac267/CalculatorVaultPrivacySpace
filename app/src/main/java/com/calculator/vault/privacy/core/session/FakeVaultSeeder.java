@@ -47,6 +47,7 @@ public final class FakeVaultSeeder {
         app.lastLaunchedAt = now - 3_600_000L;
         app.launchCount = 2;
         app.vaultScope = VaultScope.FAKE;
+        app.isClone = false;
         vaultAppDao.insert(app);
         pinManager.putBoolean("fake_vault_seeded", true);
     }

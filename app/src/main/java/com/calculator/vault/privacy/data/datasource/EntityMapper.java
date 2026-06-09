@@ -24,7 +24,8 @@ public final class EntityMapper {
                 entity.category,
                 entity.favorite,
                 entity.lastLaunchedAt,
-                entity.launchCount
+                entity.launchCount,
+                entity.isClone
         );
     }
 
