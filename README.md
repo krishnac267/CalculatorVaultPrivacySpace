@@ -20,7 +20,7 @@ Debug build for sideloading on a physical device:
 Or with USB debugging:
 
 ```bash
-adb install releases/CalculatorVaultPrivacy-v3.1.0-debug.apk
+adb install releases/CalculatorVaultPrivacy-v3.1.1-debug.apk
 ```
 
 ### First launch
@@ -28,9 +28,10 @@ adb install releases/CalculatorVaultPrivacy-v3.1.0-debug.apk
 1. Complete setup (secret PIN, confirm PIN).
 2. On the calculator, enter your PIN and press **=** to open the vault.
 
-### v3.1.0 highlights
+### v3.1.1 highlights
 
-- **App Clone Space** — enable Clone Space in Apps, then clone apps with separate accounts/data (Android work profile)
+- **Fix:** Clone Space setup on Android 12+ (resolves "Contact IT admin" during enable)
+- **App Clone Space** — clone apps with separate data via Android work profile
 - **Improved app picker** — search all installed apps (no 50-app limit)
 
 ## Architecture
