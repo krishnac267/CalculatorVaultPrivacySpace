@@ -39,22 +39,65 @@ public final class WorkProfileCloneManager {
 
     public CloneSpaceStatus getStatus() {
         UserHandle workUser = findWorkProfileUser();
-        if (workUser == null) {
+        if (workUser != null) {
+            return new CloneSpaceStatus(
+                    true,
+                    true,
+                    "Clone Space is ready. Cloned apps keep separate accounts and storage."
+            );
+        }
+        if (!isProvisioningAllowed()) {
             return new CloneSpaceStatus(
                     false,
-                    "Enable Clone Space to run a second copy of apps with separate data."
+                    false,
+                    "Clone Space is blocked on this phone. Remove any existing work/school "
+                            + "profile in Settings → Accounts, then try again. On Samsung/Xiaomi, "
+                            + "you can also use built-in Dual Apps in Settings."
+            );
+        }
+        if (!canProvisionCloneSpace()) {
+            return new CloneSpaceStatus(
+                    false,
+                    false,
+                    "This device does not support Clone Space setup."
             );
         }
         return new CloneSpaceStatus(
+                false,
                 true,
-                "Clone Space is ready. Cloned apps keep separate accounts and storage."
+                "Enable Clone Space to run a second copy of apps with separate data."
         );
     }
 
+    public boolean isProvisioningAllowed() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            return false;
+        }
+        DevicePolicyManager dpm = context.getSystemService(DevicePolicyManager.class);
+        if (dpm == null) {
+            return false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            return dpm.isProvisioningAllowed(DevicePolicyManager.ACTION_PROVISION_MANAGED_PROFILE);
+        }
+        return canProvisionCloneSpace();
+    }
+
     public Intent buildProvisioningIntent() {
+        ComponentName admin = getAdminComponent();
         Intent intent = new Intent(DevicePolicyManager.ACTION_PROVISION_MANAGED_PROFILE);
-        intent.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME, getAdminComponent());
+        intent.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_COMPONENT_NAME, admin);
+        intent.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_DEVICE_ADMIN_PACKAGE_NAME, context.getPackageName());
         intent.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_ENCRYPTION, true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            intent.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_LEAVE_ALL_SYSTEM_APPS_ENABLED, true);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            intent.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_SKIP_EDUCATION_SCREENS, true);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            intent.putExtra(DevicePolicyManager.EXTRA_PROVISIONING_ALLOW_OFFLINE, true);
+        }
         return intent;
     }
 

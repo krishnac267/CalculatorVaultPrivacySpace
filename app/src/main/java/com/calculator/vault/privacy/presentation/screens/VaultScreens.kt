@@ -86,10 +86,12 @@ fun AppsScreen(
                     title = stringResource(R.string.clone_space_title),
                     description = uiState.cloneSpaceMessage,
                     icon = Icons.Outlined.Apps,
-                    onClick = onEnableCloneSpace,
+                    onClick = { if (uiState.cloneSpaceCanEnable) onEnableCloneSpace() },
                 )
-                OutlinedButton(onClick = onEnableCloneSpace, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.clone_space_enable))
+                if (uiState.cloneSpaceCanEnable) {
+                    OutlinedButton(onClick = onEnableCloneSpace, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.clone_space_enable))
+                    }
                 }
             } else {
                 Text(uiState.cloneSpaceMessage)

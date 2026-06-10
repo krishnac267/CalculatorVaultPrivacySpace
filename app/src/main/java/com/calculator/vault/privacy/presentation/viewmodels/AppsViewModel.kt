@@ -31,6 +31,7 @@ data class AppsUiState(
     val installedApps: List<InstalledApp> = emptyList(),
     val showPicker: Boolean = false,
     val cloneSpaceReady: Boolean = false,
+    val cloneSpaceCanEnable: Boolean = true,
     val cloneSpaceMessage: String = "",
     val userMessage: String? = null,
 )
@@ -89,6 +90,7 @@ class AppsViewModel @Inject constructor(
                     installedApps = getInstalledAppsUseCase.execute(pickerQuery),
                     cloneSpaceReady = cloneStatus.isReady,
                     cloneSpaceMessage = cloneStatus.message,
+                    cloneSpaceCanEnable = cloneStatus.isSetupAvailable,
                 )
             }
         }
@@ -109,6 +111,11 @@ class AppsViewModel @Inject constructor(
 
     fun enableCloneSpace() {
         viewModelScope.launch {
+            val status = getCloneSpaceStatusUseCase.execute()
+            if (!status.isSetupAvailable()) {
+                _uiState.update { it.copy(userMessage = status.message) }
+                return@launch
+            }
             try {
                 val intent = buildCloneSpaceSetupIntentUseCase.execute()
                 _events.emit(AppsEvent.StartCloneSpaceSetup(intent))

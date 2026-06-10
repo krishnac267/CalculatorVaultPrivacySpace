@@ -15,6 +15,11 @@ public final class BuildCloneSpaceSetupIntentUseCase {
     }
 
     public Intent execute() {
+        if (!workProfileCloneManager.isProvisioningAllowed()) {
+            throw new IllegalStateException(
+                    "Clone Space is blocked on this device. Remove any work/school profile in Settings, then try again."
+            );
+        }
         if (!workProfileCloneManager.canProvisionCloneSpace()) {
             throw new IllegalStateException("This device does not support Clone Space setup");
         }

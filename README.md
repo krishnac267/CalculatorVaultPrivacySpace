@@ -1,6 +1,6 @@
 # Calculator Vault – Privacy Space
 
-Production-oriented rebuild of Calculator Vault (v3.1.0). Disguised calculator with encrypted vault, notes, files, fake vault, app cloning, and session lock.
+Production-oriented rebuild of Calculator Vault (v3.1.1). Disguised calculator with encrypted vault, notes, files, fake vault, app cloning, and session lock.
 
 **Package ID:** `com.calculator.vault.privacy` · **Min SDK:** 26
 
@@ -8,8 +8,8 @@ Production-oriented rebuild of Calculator Vault (v3.1.0). Disguised calculator w
 
 Debug build for sideloading on a physical device:
 
-- **In repo:** [`releases/CalculatorVaultPrivacy-v3.1.0-debug.apk`](releases/CalculatorVaultPrivacy-v3.1.0-debug.apk)
-- **GitHub Release:** [v3.1.0-debug](https://github.com/krishnac267/CalculatorVaultPrivacySpace/releases/tag/v3.1.0-debug)
+- **In repo:** [`releases/CalculatorVaultPrivacy-v3.1.1-debug.apk`](releases/CalculatorVaultPrivacy-v3.1.1-debug.apk)
+- **GitHub Release:** [v3.1.1-debug](https://github.com/krishnac267/CalculatorVaultPrivacySpace/releases/tag/v3.1.1-debug)
 
 ### Install on your phone
 
