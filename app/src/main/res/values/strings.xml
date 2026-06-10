@@ -5,6 +5,7 @@
     <string name="clone_space_ready">Clone Space is ready</string>
     <string name="clone_space_title">Clone Space</string>
     <string name="clone_space_enable">Enable Clone Space</string>
+    <string name="clone_space_open_dual_messenger">Open Samsung Dual Messenger</string>
     <string name="clone_app">Clone</string>
     <string name="shortcut_app">Shortcut</string>
     <string name="clone_badge">Clone</string>

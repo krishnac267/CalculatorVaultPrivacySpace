@@ -44,6 +44,7 @@ fun AppsScreen(
     onLaunchInstalled: (InstalledApp) -> Unit,
     onCloneInstalled: (InstalledApp) -> Unit,
     onEnableCloneSpace: () -> Unit,
+    onOpenSamsungDualMessenger: () -> Unit,
     onDismissMessage: () -> Unit,
     onPickerQueryChange: (String) -> Unit,
 ) {
@@ -91,6 +92,13 @@ fun AppsScreen(
                 if (uiState.cloneSpaceCanEnable) {
                     OutlinedButton(onClick = onEnableCloneSpace, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.clone_space_enable))
+                    }
+                } else if (uiState.cloneSpaceShowSamsungDual) {
+                    OutlinedButton(
+                        onClick = onOpenSamsungDualMessenger,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.clone_space_open_dual_messenger))
                     }
                 }
             } else {

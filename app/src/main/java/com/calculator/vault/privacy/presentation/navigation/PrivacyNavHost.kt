@@ -255,6 +255,7 @@ private fun VaultShell(
                     viewModel.events.collect { event ->
                         when (event) {
                             is AppsEvent.StartCloneSpaceSetup -> activity.startActivity(event.intent)
+                            is AppsEvent.OpenExternalIntent -> activity.startActivity(event.intent)
                         }
                     }
                 }
@@ -277,6 +278,7 @@ private fun VaultShell(
                     onLaunchInstalled = viewModel::launchInstalledApp,
                     onCloneInstalled = { app -> viewModel.cloneInstalledApp(activity, app) },
                     onEnableCloneSpace = viewModel::enableCloneSpace,
+                    onOpenSamsungDualMessenger = viewModel::openSamsungDualMessenger,
                     onDismissMessage = viewModel::clearUserMessage,
                     onPickerQueryChange = viewModel::updatePickerQuery,
                 )

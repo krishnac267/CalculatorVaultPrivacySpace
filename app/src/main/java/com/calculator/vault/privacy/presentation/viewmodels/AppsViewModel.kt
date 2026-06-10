@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.calculator.vault.privacy.core.clone.WorkProfileCloneManager
+import com.calculator.vault.privacy.domain.model.CloneSpaceAlternative
 import com.calculator.vault.privacy.domain.model.InstalledApp
 import com.calculator.vault.privacy.domain.model.VaultApp
 import com.calculator.vault.privacy.domain.usecases.BuildCloneSpaceSetupIntentUseCase
@@ -33,11 +34,13 @@ data class AppsUiState(
     val cloneSpaceReady: Boolean = false,
     val cloneSpaceCanEnable: Boolean = true,
     val cloneSpaceMessage: String = "",
+    val cloneSpaceShowSamsungDual: Boolean = false,
     val userMessage: String? = null,
 )
 
 sealed interface AppsEvent {
     data class StartCloneSpaceSetup(val intent: Intent) : AppsEvent
+    data class OpenExternalIntent(val intent: Intent) : AppsEvent
 }
 
 @HiltViewModel
@@ -91,6 +94,8 @@ class AppsViewModel @Inject constructor(
                     cloneSpaceReady = cloneStatus.isReady,
                     cloneSpaceMessage = cloneStatus.message,
                     cloneSpaceCanEnable = cloneStatus.isSetupAvailable,
+                    cloneSpaceShowSamsungDual =
+                        cloneStatus.alternative == CloneSpaceAlternative.SAMSUNG_DUAL_MESSENGER,
                 )
             }
         }
@@ -107,6 +112,12 @@ class AppsViewModel @Inject constructor(
 
     fun clearUserMessage() {
         _uiState.update { it.copy(userMessage = null) }
+    }
+
+    fun openSamsungDualMessenger() {
+        viewModelScope.launch {
+            _events.emit(AppsEvent.OpenExternalIntent(workProfileCloneManager.buildSamsungDualMessengerIntent()))
+        }
     }
 
     fun enableCloneSpace() {
@@ -149,7 +160,7 @@ class AppsViewModel @Inject constructor(
             val status = getCloneSpaceStatusUseCase.execute()
             if (!status.isReady) {
                 _uiState.update {
-                    it.copy(userMessage = "${status.message} Tap Enable Clone Space first.")
+                    it.copy(userMessage = "${status.message} Enable Dual Messenger for this app first.")
                 }
                 return@launch
             }
@@ -165,6 +176,16 @@ class AppsViewModel @Inject constructor(
                 return@launch
             }
             try {
+                if (workProfileCloneManager.shouldUseSamsungDualApps()) {
+                    workProfileCloneManager.startCloneInstall(activity, app.packageName)
+                    _uiState.update {
+                        it.copy(
+                            showPicker = false,
+                            userMessage = "Turn on ${app.label} in Dual Messenger, then return here and tap Clone again.",
+                        )
+                    }
+                    return@launch
+                }
                 pendingCloneApp = app
                 workProfileCloneManager.startCloneInstall(activity, app.packageName)
                 _uiState.update {
