@@ -279,6 +279,7 @@ private fun VaultShell(
                     onCloneInstalled = { app -> viewModel.cloneInstalledApp(activity, app) },
                     onEnableCloneSpace = viewModel::enableCloneSpace,
                     onOpenSamsungDualMessenger = viewModel::openSamsungDualMessenger,
+                    onOpenSamsungSecureFolder = viewModel::openSamsungSecureFolder,
                     onDismissMessage = viewModel::clearUserMessage,
                     onPickerQueryChange = viewModel::updatePickerQuery,
                 )

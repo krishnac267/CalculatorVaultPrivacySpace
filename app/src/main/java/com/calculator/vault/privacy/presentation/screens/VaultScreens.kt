@@ -45,6 +45,7 @@ fun AppsScreen(
     onCloneInstalled: (InstalledApp) -> Unit,
     onEnableCloneSpace: () -> Unit,
     onOpenSamsungDualMessenger: () -> Unit,
+    onOpenSamsungSecureFolder: () -> Unit,
     onDismissMessage: () -> Unit,
     onPickerQueryChange: (String) -> Unit,
 ) {
@@ -82,12 +83,17 @@ fun AppsScreen(
             subtitle = "Protected shortcuts and cloned apps",
             modifier = Modifier.padding(padding),
         ) {
-            if (!uiState.cloneSpaceReady) {
+            if (!uiState.cloneSpaceReady || uiState.cloneSpaceShowSamsungDual) {
                 VaultCard(
                     title = stringResource(R.string.clone_space_title),
                     description = uiState.cloneSpaceMessage,
                     icon = Icons.Outlined.Apps,
-                    onClick = { if (uiState.cloneSpaceCanEnable) onEnableCloneSpace() },
+                    onClick = {
+                        when {
+                            uiState.cloneSpaceCanEnable -> onEnableCloneSpace()
+                            uiState.cloneSpaceShowSamsungDual -> onOpenSamsungDualMessenger()
+                        }
+                    },
                 )
                 if (uiState.cloneSpaceCanEnable) {
                     OutlinedButton(onClick = onEnableCloneSpace, modifier = Modifier.fillMaxWidth()) {
@@ -99,6 +105,14 @@ fun AppsScreen(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(stringResource(R.string.clone_space_open_dual_messenger))
+                    }
+                    if (uiState.cloneSpaceShowSecureFolder) {
+                        OutlinedButton(
+                            onClick = onOpenSamsungSecureFolder,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.clone_space_open_secure_folder))
+                        }
                     }
                 }
             } else {

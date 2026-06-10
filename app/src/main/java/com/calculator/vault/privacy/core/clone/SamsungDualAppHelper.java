@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.pm.LauncherActivityInfo;
 import android.content.pm.LauncherApps;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.os.Build;
 import android.os.Process;
 import android.os.UserHandle;
@@ -39,33 +40,56 @@ public final class SamsungDualAppHelper {
         return isPackageInstalled(DUAL_MESSENGER_PACKAGE);
     }
 
-    public boolean isKnoxSecuredDevice() {
-        if (!isSamsungDevice()) {
-            return false;
-        }
-        return isDualMessengerAvailable()
-                || isPackageInstalled(SECURE_FOLDER_PACKAGE)
-                || hasSecondaryUserProfile()
-                || hasKnoxRuntime();
+    public boolean isSecureFolderAvailable() {
+        return isPackageInstalled(SECURE_FOLDER_PACKAGE);
     }
 
     public Intent buildDualMessengerSettingsIntent() {
-        PackageManager pm = context.getPackageManager();
-        String[] activities = {
+        Intent fromPackage = findActivityInPackage(DUAL_MESSENGER_PACKAGE, "dual");
+        if (fromPackage != null) {
+            return fromPackage;
+        }
+        String[] activityNames = {
                 "com.samsung.android.da.daagent.DualMessengerSettingActivity",
                 "com.samsung.android.da.daagent.settings.DualMessengerSettingsActivity",
+                "com.samsung.android.da.daagent.dualsettings.DualSettingsActivity",
+                "com.samsung.android.da.daagent.DualAppActivity",
         };
-        for (String activity : activities) {
-            Intent intent = new Intent();
-            intent.setComponent(new ComponentName(DUAL_MESSENGER_PACKAGE, activity));
-            if (intent.resolveActivity(pm) != null) {
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        for (String activity : activityNames) {
+            Intent intent = explicitIntent(DUAL_MESSENGER_PACKAGE, activity);
+            if (intent != null) {
                 return intent;
             }
         }
-        Intent fallback = new Intent(android.provider.Settings.ACTION_SETTINGS);
-        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        return fallback;
+        String[] actions = {
+                "com.samsung.android.da.action.DUAL_APP_SETTINGS",
+                "com.samsung.android.settings.action.DUAL_MESSENGER_SETTINGS",
+        };
+        for (String action : actions) {
+            Intent intent = new Intent(action);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                return intent;
+            }
+        }
+        return buildSamsungSettingsFallback(
+                "Open Settings → Advanced features → Dual Messenger (or Dual Apps)."
+        );
+    }
+
+    public Intent buildSecureFolderIntent() {
+        Intent launch = context.getPackageManager().getLaunchIntentForPackage(SECURE_FOLDER_PACKAGE);
+        if (launch != null) {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            return launch;
+        }
+        Intent fromPackage = findActivityInPackage(SECURE_FOLDER_PACKAGE, "setup");
+        if (fromPackage != null) {
+            return fromPackage;
+        }
+        return buildSamsungSettingsFallback(
+                "Open Settings → Security and privacy → Secure Folder."
+        );
     }
 
     public UserHandle findSecondaryAppUser(String packageName) {
@@ -78,16 +102,20 @@ public final class SamsungDualAppHelper {
             return null;
         }
         UserHandle primary = Process.myUserHandle();
+        boolean inPrimary = hasLauncherActivities(launcherApps, packageName, primary);
+        UserHandle bestMatch = null;
         for (UserHandle profile : userManager.getUserProfiles()) {
             if (profile.equals(primary)) {
                 continue;
             }
-            List<LauncherActivityInfo> activities = launcherApps.getActivityList(packageName, profile);
-            if (activities != null && !activities.isEmpty()) {
-                return profile;
+            if (hasLauncherActivities(launcherApps, packageName, profile)) {
+                if (inPrimary) {
+                    return profile;
+                }
+                bestMatch = profile;
             }
         }
-        return null;
+        return bestMatch;
     }
 
     public boolean isInstalledInSecondaryProfile(String packageName) {
@@ -97,7 +125,9 @@ public final class SamsungDualAppHelper {
     public void launchSecondaryApp(String packageName) {
         UserHandle user = findSecondaryAppUser(packageName);
         if (user == null) {
-            throw new IllegalStateException("Dual copy is not installed for this app");
+            throw new IllegalStateException(
+                    "No dual copy found. Enable it in Dual Messenger or move the app into Secure Folder first."
+            );
         }
         LauncherApps launcherApps = context.getSystemService(LauncherApps.class);
         if (launcherApps == null) {
@@ -105,29 +135,70 @@ public final class SamsungDualAppHelper {
         }
         List<LauncherActivityInfo> activities = launcherApps.getActivityList(packageName, user);
         if (activities == null || activities.isEmpty()) {
-            throw new IllegalStateException("Dual copy is not installed for this app");
+            throw new IllegalStateException(
+                    "No dual copy found. Enable it in Dual Messenger or move the app into Secure Folder first."
+            );
         }
-        launcherApps.startMainActivity(activities.get(0).getComponentName(), user, null, null);
-    }
-
-    private boolean hasSecondaryUserProfile() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-            return false;
-        }
-        UserManager userManager = context.getSystemService(UserManager.class);
-        if (userManager == null) {
-            return false;
-        }
-        return userManager.getUserProfiles().size() > 1;
-    }
-
-    private boolean hasKnoxRuntime() {
+        LauncherActivityInfo target = activities.get(activities.size() - 1);
         try {
-            Class.forName("com.samsung.android.knox.EnterpriseDeviceManager");
-            return true;
-        } catch (ClassNotFoundException ignored) {
-            return false;
+            launcherApps.startMainActivity(target.getComponentName(), user, null, null);
+        } catch (SecurityException firstFailure) {
+            launcherApps.startMainActivity(
+                    target.getComponentName(),
+                    Process.myUserHandle(),
+                    null,
+                    null
+            );
         }
+    }
+
+    private Intent findActivityInPackage(String packageName, String nameHint) {
+        PackageManager pm = context.getPackageManager();
+        Intent probe = new Intent(Intent.ACTION_MAIN);
+        probe.addCategory(Intent.CATEGORY_DEFAULT);
+        probe.setPackage(packageName);
+        List<ResolveInfo> matches = pm.queryIntentActivities(probe, PackageManager.MATCH_DEFAULT_ONLY);
+        Intent fallback = null;
+        for (ResolveInfo match : matches) {
+            if (match.activityInfo == null) {
+                continue;
+            }
+            Intent intent = explicitIntent(match.activityInfo.packageName, match.activityInfo.name);
+            if (intent == null) {
+                continue;
+            }
+            String className = match.activityInfo.name.toLowerCase();
+            if (className.contains(nameHint.toLowerCase())) {
+                return intent;
+            }
+            if (fallback == null) {
+                fallback = intent;
+            }
+        }
+        return fallback;
+    }
+
+    private Intent explicitIntent(String packageName, String className) {
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_DEFAULT);
+        intent.setComponent(new ComponentName(packageName, className));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (intent.resolveActivity(context.getPackageManager()) != null) {
+            return intent;
+        }
+        return null;
+    }
+
+    private Intent buildSamsungSettingsFallback(String hint) {
+        Intent settings = new Intent(android.provider.Settings.ACTION_SETTINGS);
+        settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        settings.putExtra(":settings:show_fragment_title", hint);
+        return settings;
+    }
+
+    private boolean hasLauncherActivities(LauncherApps launcherApps, String packageName, UserHandle user) {
+        List<LauncherActivityInfo> activities = launcherApps.getActivityList(packageName, user);
+        return activities != null && !activities.isEmpty();
     }
 
     private boolean isPackageInstalled(String packageName) {

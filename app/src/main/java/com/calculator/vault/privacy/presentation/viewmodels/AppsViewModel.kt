@@ -35,6 +35,7 @@ data class AppsUiState(
     val cloneSpaceCanEnable: Boolean = true,
     val cloneSpaceMessage: String = "",
     val cloneSpaceShowSamsungDual: Boolean = false,
+    val cloneSpaceShowSecureFolder: Boolean = false,
     val userMessage: String? = null,
 )
 
@@ -96,6 +97,7 @@ class AppsViewModel @Inject constructor(
                     cloneSpaceCanEnable = cloneStatus.isSetupAvailable,
                     cloneSpaceShowSamsungDual =
                         cloneStatus.alternative == CloneSpaceAlternative.SAMSUNG_DUAL_MESSENGER,
+                    cloneSpaceShowSecureFolder = workProfileCloneManager.isSamsungSecureFolderAvailable(),
                 )
             }
         }
@@ -120,8 +122,21 @@ class AppsViewModel @Inject constructor(
         }
     }
 
+    fun openSamsungSecureFolder() {
+        viewModelScope.launch {
+            _events.emit(AppsEvent.OpenExternalIntent(workProfileCloneManager.buildSamsungSecureFolderIntent()))
+        }
+    }
+
     fun enableCloneSpace() {
         viewModelScope.launch {
+            if (workProfileCloneManager.shouldUseSamsungDualApps()) {
+                openSamsungDualMessenger()
+                _uiState.update {
+                    it.copy(userMessage = "Samsung Knox blocks in-app setup. Use Dual Messenger or Secure Folder, then Add App → Clone.")
+                }
+                return@launch
+            }
             val status = getCloneSpaceStatusUseCase.execute()
             if (!status.isSetupAvailable()) {
                 _uiState.update { it.copy(userMessage = status.message) }
@@ -157,13 +172,6 @@ class AppsViewModel @Inject constructor(
 
     fun cloneInstalledApp(activity: Activity, app: InstalledApp) {
         viewModelScope.launch {
-            val status = getCloneSpaceStatusUseCase.execute()
-            if (!status.isReady) {
-                _uiState.update {
-                    it.copy(userMessage = "${status.message} Enable Dual Messenger for this app first.")
-                }
-                return@launch
-            }
             if (cloneInstalledAppUseCase.isAlreadyCloned(app.packageName)) {
                 cloneInstalledAppUseCase.onInstallSucceeded(app)
                 _uiState.update {
@@ -177,12 +185,20 @@ class AppsViewModel @Inject constructor(
             }
             try {
                 if (workProfileCloneManager.shouldUseSamsungDualApps()) {
+                    pendingCloneApp = app
                     workProfileCloneManager.startCloneInstall(activity, app.packageName)
                     _uiState.update {
                         it.copy(
                             showPicker = false,
-                            userMessage = "Turn on ${app.label} in Dual Messenger, then return here and tap Clone again.",
+                            userMessage = "Turn on ${app.label} in Dual Messenger (or add it to Secure Folder), then return here — it will be added automatically.",
                         )
+                    }
+                    return@launch
+                }
+                val status = getCloneSpaceStatusUseCase.execute()
+                if (!status.isReady) {
+                    _uiState.update {
+                        it.copy(userMessage = "${status.message} Tap Enable Clone Space first.")
                     }
                     return@launch
                 }
